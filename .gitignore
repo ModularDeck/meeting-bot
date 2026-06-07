@@ -19,3 +19,4 @@ debug-videos/
 compose.override.yml
 compose.override.yml.bak
 docker-compose.override.yml
+Dockerfile.development
