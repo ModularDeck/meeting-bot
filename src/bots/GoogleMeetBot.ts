@@ -94,12 +94,12 @@ export class GoogleMeetBot extends MeetBotBase {
         await retryActionWithWait(
           'Clicking the "Continue without microphone and camera" button',
           async () => {
-            await this.page.getByRole('button', { name: 'Continue without microphone and camera' }).waitFor({ timeout: 30000 });
+            await this.page.getByRole('button', { name: 'Continue without microphone and camera' }).waitFor({ timeout: 5000 });
             await this.page.getByRole('button', { name: 'Continue without microphone and camera' }).click();
           },
           this._logger,
           1,
-          15000,
+          5000,
         );
       } catch (dismissError) {
         this._logger.info('Continue without microphone and camera button is probably missing!...');
@@ -193,8 +193,11 @@ export class GoogleMeetBot extends MeetBotBase {
           }
         }
 
-        // Throws to initiate retries
         if (!buttonClicked) {
+          try {
+            const allButtons = await this.page.locator('button').allInnerTexts();
+            this._logger.info('All button texts on page', { buttons: allButtons.join(', ') });
+          } catch(_) {}
           throw new Error('Unable to complete the join action...');
         }
       },
