@@ -531,7 +531,7 @@ export class GoogleMeetBot extends MeetBotBase {
     // Inject the MediaRecorder code into the browser context using page.evaluate
     await this.page.evaluate(
       async ({ teamId, duration, inactivityLimit, userId, slightlySecretId, activateInactivityDetectionAfter, activateInactivityDetectionAfterMinutes, primaryMimeType, secondaryMimeType, questions, ttsEnabled, ttsVoice, ttsRate, ttsQuestionPauseSec }: 
-      { teamId:string, userId: string, duration: number, inactivityLimit: number, slightlySecretId: string, activateInactivityDetectionAfter: string, activateInactivityDetectionAfterMinutes: number, primaryMimeType: string, secondaryMimeType: string }) => {
+      { teamId:string, userId: string, duration: number, inactivityLimit: number, slightlySecretId: string, activateInactivityDetectionAfter: string, activateInactivityDetectionAfterMinutes: number, primaryMimeType: string, secondaryMimeType: string, questions: string[] | null, ttsEnabled: boolean, ttsVoice: string, ttsRate: number, ttsQuestionPauseSec: number }) => {
         let timeoutId: NodeJS.Timeout;
         let inactivityParticipantDetectionTimeout: NodeJS.Timeout;
         let inactivitySilenceDetectionTimeout: NodeJS.Timeout;
@@ -1068,11 +1068,12 @@ export class GoogleMeetBot extends MeetBotBase {
                 || voices.find(v => v.lang === 'en-US')
                 || voices[0];
             };
-            const speak = (text) => new Promise((resolve) => {
+            const speak = (text: string) => new Promise<void>((resolve) => {
               const u = new SpeechSynthesisUtterance(text);
               u.voice = getVoice();
               u.rate = ttsRate;
-              u.onend = resolve; u.onerror = resolve;
+              u.onend = () => resolve();
+              u.onerror = () => resolve();
               synth.speak(u);
             });
             for (let i = 0; i < questions.length; i++) {
@@ -1102,7 +1103,7 @@ export class GoogleMeetBot extends MeetBotBase {
         ttsVoice: config.ttsVoice,
         ttsRate: config.ttsRate,
         ttsQuestionPauseSec: config.ttsQuestionPauseSec
-      }
+      } as any
     );
   
     this._logger.info('Waiting for recording duration', config.maxRecordingDuration, 'minutes...');
