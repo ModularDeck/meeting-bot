@@ -77,7 +77,7 @@ export class GoogleMeetBot extends MeetBotBase {
     }
   }
 
-  private async joinMeeting({ url, name, teamId, userId, eventId, botId, pushState, uploader }: JoinParams & { pushState(state: BotStatus): void }): Promise<void> {
+  private async joinMeeting({ url, name, teamId, userId, eventId, botId, pushState, uploader, questions }: JoinParams & { pushState(state: BotStatus): void }): Promise<void> {
     this._logger.info('Launching browser...');
 
     this.page = await createBrowserContext(url, this._correlationId, 'google');
@@ -490,14 +490,14 @@ export class GoogleMeetBot extends MeetBotBase {
 
     // Recording the meeting page
     this._logger.info('Begin recording...');
-    await this.recordMeetingPage({ teamId, eventId, userId, botId, uploader });
+    await this.recordMeetingPage({ teamId, eventId, userId, botId, uploader, questions });
 
     pushState('finished');
   }
 
   private async recordMeetingPage(
-    { teamId, userId, eventId, botId, uploader }: 
-    { teamId: string, userId: string, eventId?: string, botId?: string, uploader: IUploader }
+    { teamId, userId, eventId, botId, uploader, questions }: 
+    { teamId: string, userId: string, eventId?: string, botId?: string, uploader: IUploader, questions?: string[] }
   ): Promise<void> {
     const duration = config.maxRecordingDuration * 60 * 1000;
     const inactivityLimit = config.inactivityLimit * 60 * 1000;
@@ -530,7 +530,7 @@ export class GoogleMeetBot extends MeetBotBase {
 
     // Inject the MediaRecorder code into the browser context using page.evaluate
     await this.page.evaluate(
-      async ({ teamId, duration, inactivityLimit, userId, slightlySecretId, activateInactivityDetectionAfter, activateInactivityDetectionAfterMinutes, primaryMimeType, secondaryMimeType }: 
+      async ({ teamId, duration, inactivityLimit, userId, slightlySecretId, activateInactivityDetectionAfter, activateInactivityDetectionAfterMinutes, primaryMimeType, secondaryMimeType, questions, ttsEnabled, ttsVoice, ttsRate, ttsQuestionPauseSec }: 
       { teamId:string, userId: string, duration: number, inactivityLimit: number, slightlySecretId: string, activateInactivityDetectionAfter: string, activateInactivityDetectionAfterMinutes: number, primaryMimeType: string, secondaryMimeType: string }) => {
         let timeoutId: NodeJS.Timeout;
         let inactivityParticipantDetectionTimeout: NodeJS.Timeout;
@@ -1052,6 +1052,40 @@ export class GoogleMeetBot extends MeetBotBase {
 
         // Start the recording
         await startRecording();
+
+        // TTS: speak screening questions via Chrome SpeechSynthesis
+        if (ttsEnabled && questions && questions.length > 0) {
+          const speakQuestions = async () => {
+            const synth = window.speechSynthesis;
+            if (!synth) return;
+            const getVoice = () => {
+              const voices = synth.getVoices();
+              if (ttsVoice) {
+                const m = voices.find(v => v.name.includes(ttsVoice) || v.lang.includes(ttsVoice));
+                if (m) return m;
+              }
+              return voices.find(v => v.lang === 'en-US' && v.name.includes('Google'))
+                || voices.find(v => v.lang === 'en-US')
+                || voices[0];
+            };
+            const speak = (text) => new Promise((resolve) => {
+              const u = new SpeechSynthesisUtterance(text);
+              u.voice = getVoice();
+              u.rate = ttsRate;
+              u.onend = resolve; u.onerror = resolve;
+              synth.speak(u);
+            });
+            for (let i = 0; i < questions.length; i++) {
+              console.log('Speaking Q' + (i+1) + '/' + questions.length);
+              await speak(questions[i]);
+              if (i < questions.length - 1) {
+                await new Promise(r => setTimeout(r, ttsQuestionPauseSec * 1000));
+              }
+            }
+            console.log('All questions spoken');
+          };
+          speakQuestions();
+        }
       },
       { 
         teamId,
@@ -1062,7 +1096,12 @@ export class GoogleMeetBot extends MeetBotBase {
         activateInactivityDetectionAfterMinutes: config.activateInactivityDetectionAfter,
         activateInactivityDetectionAfter: new Date(new Date().getTime() + config.activateInactivityDetectionAfter * 60 * 1000).toISOString(),
         primaryMimeType: webmMimeType,
-        secondaryMimeType: vp9MimeType
+        secondaryMimeType: vp9MimeType,
+        questions: questions || null,
+        ttsEnabled: config.ttsEnabled,
+        ttsVoice: config.ttsVoice,
+        ttsRate: config.ttsRate,
+        ttsQuestionPauseSec: config.ttsQuestionPauseSec
       }
     );
   

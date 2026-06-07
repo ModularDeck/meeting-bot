@@ -61,6 +61,11 @@ export default {
   activateInactivityDetectionAfter: process.env.INACTIVITY_DETECTION_START_DELAY_MINUTES ? Number(process.env.INACTIVITY_DETECTION_START_DELAY_MINUTES) :  1,
   serviceKey: process.env.SCREENAPP_BACKEND_SERVICE_API_KEY,
   joinWaitTime: process.env.JOIN_WAIT_TIME_MINUTES ? Number(process.env.JOIN_WAIT_TIME_MINUTES) : 10,
+  // TTS (Text-to-Speech) for reading screening questions aloud
+  ttsEnabled: process.env.TTS_ENABLED === 'true',
+  ttsVoice: process.env.TTS_VOICE || '',
+  ttsRate: process.env.TTS_RATE ? Number(process.env.TTS_RATE) : 1,
+  ttsQuestionPauseSec: process.env.TTS_QUESTION_PAUSE_SEC ? Number(process.env.TTS_QUESTION_PAUSE_SEC) : 120,
   // Number of retries for transient errors (not applied to WaitingAtLobbyRetryError)
   retryCount: process.env.RETRY_COUNT ? Number(process.env.RETRY_COUNT) : 2,
   miscStorageBucket: process.env.GCP_MISC_BUCKET,
