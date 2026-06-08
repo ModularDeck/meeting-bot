@@ -6,6 +6,7 @@ const baseURLV2 = config.authBaseUrlV2;
 export const createApiV2 = (token: string, serviceKey?: string) => 
   axios.create({
     baseURL: baseURLV2,
+    timeout: 5000,
     headers: {
       Authorization: `Bearer ${token}`,
       'Content-Type': 'application/json',
