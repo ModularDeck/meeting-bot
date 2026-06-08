@@ -8,7 +8,7 @@ import config from './config';
 import { isPodMarkedForDeletion } from './util/k8sLifecycle';
 import { loggerFactory } from './util/logger';
 
-const port = 3000;
+const port = parseInt(process.env.PORT || '3000', 10);
 
 // Create Express server
 const server = http.createServer(app);
